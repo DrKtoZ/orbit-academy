@@ -1,3 +1,9 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Orbit Academy: a space platformer that teaches gamification and adult learning concepts.">
 <title>Orbit Academy</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,6 +27,7 @@
   --body:'Atkinson Hyperlegible',system-ui,'Segoe UI',Roboto,sans-serif;
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{background:var(--bg)}
 body{margin:0;color:var(--ink);font:400 1rem/1.55 var(--body);padding-inline:16px;padding-block:12px 28px}
 button{font:inherit;color:inherit;cursor:pointer}
@@ -129,6 +136,9 @@ th{font-family:var(--px);font-size:.55rem;color:var(--cyan);font-weight:400}
 @media (max-width:520px){.mbox{padding:14px}.btn{padding:8px 10px}}
 @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
 </style>
+</head>
+<body>
+
 
 <main id="game">
   <header id="hud" aria-label="Mission status">
@@ -920,3 +930,5 @@ titleScreen();
 requestAnimationFrame(frame);
 })();
 </script>
+</body>
+</html>
