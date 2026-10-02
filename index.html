@@ -1,0 +1,922 @@
+<title>Orbit Academy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Layout: slim mission HUD above a framed side-scrolling viewport. Menus, quiz cards and level summaries open as full-screen overlays so text stays readable at any size. */
+  color-scheme:dark;
+  --bg:#080d1c;
+  --ink:#e9eeff;
+  --muted:#a6b2de;
+  --panel:#121a35;
+  --panel2:#1a2550;
+  --line:#2f3f85;
+  --amber:#ffb347;
+  --cyan:#5fd6ff;
+  --good:#62e8a8;
+  --bad:#ff7a8a;
+  --focus:#ffe08a;
+  --px:'Press Start 2P','Courier New',monospace;
+  --body:'Atkinson Hyperlegible',system-ui,'Segoe UI',Roboto,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg)}
+body{margin:0;color:var(--ink);font:400 1rem/1.55 var(--body);padding-inline:16px;padding-block:12px 28px}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+#game{max-width:1040px;margin-inline:auto;display:flex;flex-direction:column;gap:10px}
+#hud{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px;background:var(--panel);border:2px solid var(--line);padding:8px 12px}
+.hud-l,.hud-r{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;min-width:0}
+.px{font-family:var(--px);line-height:1.5;letter-spacing:.02em}
+#hLevel{font-size:.62rem;color:var(--amber)}
+#pips{display:flex;gap:5px}
+.pip{width:14px;height:14px;border:2px solid var(--line)}
+.pip.on{background:var(--good);border-color:var(--good)}
+.stat{font-size:.95rem;font-variant-numeric:tabular-nums}
+.stat b{color:var(--amber)}
+.btn{background:var(--panel2);border:2px solid var(--line);padding:8px 14px;min-height:40px;font-weight:700;font-size:.95rem}
+.btn:hover{border-color:var(--cyan)}
+.btn.primary{background:var(--amber);border-color:var(--amber);color:#1b1200}
+.btn.primary:hover{border-color:#fff2cf;background:#ffc468}
+.btn.small{min-height:34px;padding:4px 10px;font-size:.85rem}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+#stage{position:relative;border:2px solid var(--line);background:#000}
+#c{display:block;width:100%;height:auto;image-rendering:pixelated;aspect-ratio:960/512}
+#toast{position:absolute;top:10px;left:50%;transform:translateX(-50%);max-width:92%;background:var(--panel);border:2px solid var(--cyan);padding:6px 12px;font-weight:700;font-size:.9rem;text-align:center;pointer-events:none}
+#toast:empty{display:none}
+#pad{display:none;justify-content:space-between;gap:12px}
+#pad .grp{display:flex;gap:10px}
+#pad button{width:68px;height:60px;font-size:1.4rem;background:var(--panel2);border:2px solid var(--line);touch-action:none;user-select:none;-webkit-user-select:none}
+#pad button:active{border-color:var(--cyan);background:var(--line)}
+@media (pointer:coarse){#pad{display:flex}}
+.hint{margin:0;color:var(--muted);font-size:.85rem}
+.hint kbd{font-family:var(--body);font-weight:700;border:1px solid var(--line);padding:0 5px;color:var(--ink)}
+
+/* overlays */
+#screen{position:fixed;inset:0;z-index:20;overflow:auto;
+  padding:max(20px,env(safe-area-inset-top)) 16px max(28px,env(safe-area-inset-bottom));
+  background:
+    radial-gradient(1.5px 1.5px at 8% 14%,#fff9,transparent),radial-gradient(1.5px 1.5px at 23% 71%,#fff8,transparent),
+    radial-gradient(2px 2px at 41% 33%,#9fe3ffcc,transparent),radial-gradient(1.5px 1.5px at 57% 88%,#fff7,transparent),
+    radial-gradient(1.5px 1.5px at 72% 19%,#fff9,transparent),radial-gradient(2px 2px at 88% 57%,#ffd9a0cc,transparent),
+    radial-gradient(1.5px 1.5px at 95% 92%,#fff8,transparent),radial-gradient(1.5px 1.5px at 33% 8%,#fff8,transparent),
+    radial-gradient(900px 500px at 85% -10%,#2a1f6a99,transparent),
+    var(--bg)}
+.wrap{max-width:900px;margin-inline:auto;display:flex;flex-direction:column;gap:20px;min-width:0}
+.kicker{font-size:.62rem;color:var(--cyan);margin:0}
+h1,h2,h3{margin:0;text-wrap:balance}
+h1{font-family:var(--px);font-size:clamp(1.05rem,4.4vw,1.8rem);line-height:1.5;color:var(--amber)}
+h2{font-family:var(--px);font-size:clamp(.8rem,2.8vw,1.05rem);line-height:1.6;color:var(--ink)}
+h3{font-size:1.05rem}
+.lead{font-size:1.1rem;max-width:62ch;margin:0}
+p{margin:0}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.suits{display:flex;gap:10px}
+.suit{width:44px;height:44px;border:3px solid var(--line);background:var(--c)}
+.suit[aria-pressed="true"]{border-color:#fff}
+.srcnote{color:var(--muted);font-size:.85rem;max-width:70ch}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
+.lv{background:var(--panel);border:2px solid var(--line);padding:14px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.lv.locked{opacity:.5}
+.lv .n{font-family:var(--px);font-size:.62rem;color:var(--cyan)}
+.lv p{color:var(--muted);font-size:.92rem}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{font-size:.75rem;border:1px solid var(--line);padding:1px 7px;color:var(--muted)}
+.badges{display:flex;flex-wrap:wrap;gap:6px;min-height:24px}
+.bdg{font-size:.78rem;font-weight:700;padding:2px 8px;background:#2a2240;border:1px solid #6b57b8;color:#d9ccff}
+.bdg.off{background:transparent;border-style:dashed;border-color:var(--line);color:#6f7bb0}
+.panel{background:var(--panel);border:2px solid var(--line);padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
+.stats div{background:var(--panel);border:2px solid var(--line);padding:10px}
+.stats .v{font-family:var(--px);font-size:.95rem;color:var(--amber);font-variant-numeric:tabular-nums}
+.stats .k{font-size:.8rem;color:var(--muted)}
+ul.clean{margin:0;padding-left:1.2rem;display:flex;flex-direction:column;gap:6px}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.92rem}
+th,td{text-align:left;vertical-align:top;border-bottom:1px solid var(--line);padding:8px 10px}
+th{font-family:var(--px);font-size:.55rem;color:var(--cyan);font-weight:400}
+
+#modal{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:16px;background:rgba(4,7,18,.86)}
+.mbox{width:min(720px,100%);max-height:100%;overflow:auto;background:var(--panel);border:2px solid var(--cyan);padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.mhead{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.mhead .px{font-size:.58rem;color:var(--cyan)}
+.mhead .px.dim{color:var(--muted)}
+.cardtxt{display:flex;flex-direction:column;gap:10px;font-size:1.02rem}
+.cardtxt ul{margin:0;padding-left:1.2rem;display:flex;flex-direction:column;gap:6px}
+.cardtxt strong{color:var(--amber)}
+.nine{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:6px 16px;margin:0;font-size:.92rem}
+.nine div{min-width:0}
+.nine dt{font-weight:700;color:var(--amber)}
+.nine dd{margin:0;color:var(--muted)}
+.src{color:var(--muted);font-size:.82rem}
+.mfoot{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end}
+.q{font-size:1.1rem;font-weight:700}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt{display:flex;gap:12px;align-items:flex-start;width:100%;text-align:left;background:var(--panel2);border:2px solid var(--line);padding:10px 12px}
+.opt:hover:not([disabled]){border-color:var(--cyan)}
+.opt .num{font-family:var(--px);font-size:.6rem;color:var(--cyan);padding-top:.35rem}
+.opt.wrong{border-color:var(--bad);opacity:.6;text-decoration:line-through}
+.opt.right{border-color:var(--good);background:#143a30}
+.fb{padding:10px 12px;background:#101a3c;border:2px solid var(--line)}
+.fb.good{border-color:var(--good)}
+.fb.bad{border-color:var(--bad)}
+.fb b.g{color:var(--good)}
+.fb b.b{color:var(--bad)}
+.logitem{width:100%;text-align:left;background:var(--panel2);border:2px solid var(--line);padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.logitem:hover{border-color:var(--cyan)}
+.logitem small{color:var(--muted)}
+@media (max-width:520px){.mbox{padding:14px}.btn{padding:8px 10px}}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+
+<main id="game">
+  <header id="hud" aria-label="Mission status">
+    <div class="hud-l">
+      <span id="hLevel" class="px"></span>
+      <span id="pips" aria-label="Stations completed"></span>
+    </div>
+    <div class="hud-r">
+      <span class="stat">Score <b id="hScore">0</b></span>
+      <span class="stat">Crystals <b id="hGems">0</b></span>
+      <button class="btn small" id="bLog" type="button">Mission log</button>
+      <button class="btn small" id="bSnd" type="button" aria-pressed="false">Sound on</button>
+      <button class="btn small" id="bMenu" type="button">Menu</button>
+    </div>
+  </header>
+  <div id="stage">
+    <canvas id="c" width="960" height="512" role="img" aria-label="Side-scrolling space station level. Reach each knowledge terminal, answer its question, then use the airlock."></canvas>
+    <div id="toast" role="status" aria-live="polite"></div>
+  </div>
+  <div id="pad" aria-label="Touch controls">
+    <div class="grp"><button id="tL" type="button" aria-label="Move left">&#9664;</button><button id="tR" type="button" aria-label="Move right">&#9654;</button></div>
+    <div class="grp"><button id="tA" type="button" aria-label="Use terminal">USE</button><button id="tJ" type="button" aria-label="Jump">&#9650;</button></div>
+  </div>
+  <p class="hint">Move <kbd>&larr;</kbd> <kbd>&rarr;</kbd> or <kbd>A</kbd> <kbd>D</kbd> &middot; Jump <kbd>Space</kbd> &middot; Use terminal <kbd>E</kbd> &middot; Back to checkpoint <kbd>R</kbd> &middot; Log <kbd>L</kbd> &middot; Menu <kbd>Esc</kbd></p>
+</main>
+<div id="screen"></div>
+<div id="modal" hidden></div>
+
+<script>
+(function(){
+'use strict';
+/* ---------- CONTENT ---------- */
+const SRC_L='Landers, Auer, Helms, Marin & Armstrong, Gamification of Adult Learning';
+const SRC_R='Riedmann, Schaper & Lugrin (2024), AI & Society 39, 369-388';
+const row=(a,b,y)=>{const r=[];for(let x=a;x<=b;x++)r.push([x,y]);return r};
+
+const LEVELS=[
+{
+ id:1,name:'Docking Bay',sub:'What is gamification?',
+ brief:'The Learning Beacon on Orbit Academy has gone dark. Before the station lets you fly deeper, its computer wants you to get the vocabulary right.',
+ tags:['Games vs serious games','Design process','Evidence'],
+ theme:{s1:'#0a1230',s2:'#1d2f66',acc:'#5fd6ff',tile:'#2a3a74',planet:'#3b6fd1'},
+ w:58,gaps:[[27,2]],plats:[[13,11,4],[19,9,3],[33,11,3],[38,11,3]],spikes:[],blobs:[[30,36,12]],
+ crys:[...row(4,6,12),...row(14,16,10),[19,8],[21,8],[27,11],[28,11],...row(33,35,10),...row(38,40,10),...row(52,54,12)],
+ checks:[24,42],start:[2,12],exit:[55,12],
+ terms:[
+  {pos:[9,12],
+   card:{title:'Three look-alikes',html:`<p>Games, serious games and gamification sound alike but do different jobs.</p><ul><li><strong>Game:</strong> voluntary, rule-bound play, usually made for entertainment.</li><li><strong>Serious game:</strong> a game built mainly to teach. The game itself is the instruction.</li><li><strong>Gamification:</strong> adding game design elements to a non-game setting, such as an existing training.</li></ul>`,src:SRC_L},
+   q:{text:'A facilitator adds a progress bar to an existing slide deck on leadership. What has she done?',opts:['Built a serious game','Gamified an existing instructional method','Created a full simulation','Replaced instruction with entertainment'],ans:1,why:'A progress bar is one game element added to instruction that already exists. The slides still deliver the content. The bar only gives progress feedback.'}},
+  {pos:[20,8],
+   card:{title:'Learn from a game, not from gamification',html:`<p>In a serious game, the game teaches. Without playing it, there is no instruction.</p><p>Gamification works differently. The existing instruction still does the teaching. Game elements aim to shift learner <strong>behaviors and attitudes</strong>, such as motivation or time on task, so that learning improves indirectly.</p><p>That is why gamification cannot rescue weak content.</p>`,src:SRC_L},
+   q:{text:'Which statement best describes how gamification affects learning?',opts:['Game elements deliver the content more effectively than other methods','It is a design process that works through learner behaviors and attitudes','It is the same thing as a serious game','It works best when the instructional content is weak'],ans:1,why:'Gamification is an instructional design process, not an instructional method. Its effects travel through behaviors and attitudes like motivation and engagement.'}},
+  {pos:[49,12],
+   card:{title:'Reality check from the lab',html:`<p>Riedmann and colleagues built a Spanish learning environment for adults. They added game elements (levels, points, badges, goals, a backstory), a social robot, both, or neither.</p><p>Learners liked all versions and scored well in all of them. Adding game elements or the robot did <strong>not</strong> produce significant gains in learning, engagement or motivation.</p><p>Possible reasons: easy content, a short 45 minute session, and strong feedback in every version.</p>`,src:SRC_R},
+   q:{text:'What did Riedmann and colleagues find when they added game elements to the adult Spanish course?',opts:['Large gains in learning and motivation','No significant improvement over the non-gamified version','Learning got significantly worse','Only motivation improved'],ans:1,why:'The base learning environment was already engaging. The game layer added no measurable benefit, which is a reminder that gamification is not automatic improvement.'}}
+ ],
+ lens:'Adults arrive with experience and healthy skepticism. Defining terms clearly respects that, and sets honest expectations: gamification supports good instruction, it does not replace it.',
+ recap:['Gamification adds game elements to existing instruction.','Serious games teach through the game itself.','Evidence is mixed, so design choices matter.']
+},
+{
+ id:2,name:'Element Nebula',sub:'The nine-element toolkit',
+ brief:'Past the docking bay, the nebula is full of loose game parts. Learn which part does which job before you try to build anything.',
+ tags:['Nine element categories','Match element to purpose'],
+ theme:{s1:'#170d33',s2:'#4b1f72',acc:'#ff7ad9',tile:'#3b2b74',planet:'#a24bd1'},
+ w:70,gaps:[[20,3],[44,3]],plats:[[10,11,3],[25,11,3],[30,9,3],[54,11,3],[59,9,3]],spikes:[[40,12,2]],blobs:[[13,18,12],[33,37,12],[56,62,12]],
+ crys:[...row(3,5,12),...row(10,12,10),[20,11],[22,11],...row(25,27,10),[30,8],[32,8],[45,10],[46,10],...row(54,56,10),...row(59,61,8),...row(66,68,12)],
+ checks:[19,43,50],start:[2,12],exit:[67,12],
+ terms:[
+  {pos:[7,12],
+   card:{title:'The nine element categories',html:`<p>Landers (2015), building on Bedwell and colleagues (2012), groups game elements into nine categories.</p><dl class="nine"><div><dt>Action language</dt><dd>How player and game communicate</dd></div><div><dt>Assessment</dt><dd>How accomplishment and progress are tracked</dd></div><div><dt>Conflict / challenge</dt><dd>The problems faced and how hard they are</dd></div><div><dt>Control</dt><dd>How much players can change the game, and how it responds</dd></div><div><dt>Environment</dt><dd>The represented surroundings</dd></div><div><dt>Game fiction</dt><dd>The story world</dd></div><div><dt>Human interaction</dt><dd>How players interact with each other</dd></div><div><dt>Immersion</dt><dd>The felt and perceptual experience</dd></div><div><dt>Rules / goals</dt><dd>Clear rules, goals and progress toward them</dd></div></dl>`,src:SRC_L},
+   q:{text:'A designer adds points that track correct answers inside an existing training module. Which element category is that mostly?',opts:['Assessment','Game fiction','Immersion','Environment'],ans:0,why:'Assessment is how accomplishment and progress are tracked. Points on correct answers are a classic example.'}},
+  {pos:[31,8],
+   card:{title:'Game fiction, with a catch',html:`<p>Game fiction means a story world around the task. Armstrong and Landers (2017) wove laptop-security training into a short story instead of slides.</p><p>Trainees reacted more favorably, and declarative knowledge was similar. The narrative version appeared to <strong>hurt procedural knowledge</strong>.</p><p>Lesson: pick elements for the outcome you care about, then check what else moved.</p>`,src:SRC_L},
+   q:{text:'A designer turns laptop-security content into a short story. Which element is that?',opts:['Game fiction','Control','Assessment','Rules / goals'],ans:0,why:'A story world is game fiction. The study behind this example also showed that satisfaction can rise while a different outcome, procedural knowledge, slips.'}},
+  {pos:[51,12],
+   card:{title:'Control and autonomy',html:`<p>Control is how much learners can alter the experience and how the experience responds. Choosing an avatar, a storyline, or the order of tasks are all control.</p><p>Self-determination theory says people need <strong>autonomy</strong>, <strong>competence</strong> and <strong>relatedness</strong>. Control elements speak to autonomy.</p><p>Riedmann's team noted their fixed task order limited learners' freedom of choice.</p>`,src:SRC_L+' and '+SRC_R},
+   q:{text:'Learners pick which module to tackle first and choose their avatar. Which element and psychological need does that serve?',opts:['Control, which supports autonomy','Assessment, which supports competence','Human interaction, which supports relatedness','Immersion, which supports competence'],ans:0,why:'Choice over path and appearance is control. In self-determination terms it serves the need for autonomy.'}},
+  {pos:[64,12],
+   card:{title:'Conflict and challenge',html:`<p>Conflict or challenge covers the problems learners face and how hard they are. Landers and colleagues describe a driving-skills training made harder with <strong>time pressure</strong> to improve realism and transfer.</p><p>Challenge also matters for competence. Praise and points only feel meaningful when the task felt hard enough to deserve them.</p>`,src:SRC_L+' and '+SRC_R},
+   q:{text:'Which change adds challenge to a simulated driving-skills practice?',opts:['A countdown timer that pressures the learner to act quickly','A badge for logging in','Background music','A choice of avatar'],ans:0,why:'Time pressure raises difficulty and realism. A login badge is a reward, music is atmosphere, and an avatar choice is control.'}}
+ ],
+ lens:'Control and choice are autonomy supports. Adults tend to engage more when they can steer how they learn, so build real options into task order, pacing and path.',
+ recap:['Nine categories: action language, assessment, challenge, control, environment, fiction, human interaction, immersion, rules and goals.','Choose each element for a specific purpose.','Check side effects on other outcomes.']
+},
+{
+ id:3,name:'Process Pulsar',sub:'How gamification works',
+ brief:'The pulsar flashes in a pattern: element, behavior, outcome. Decode the sequence before you power the next section of the beacon.',
+ tags:['Process model','Mediation and moderation','Gap analysis'],
+ theme:{s1:'#08202b',s2:'#0e5663',acc:'#5bffd0',tile:'#1f5160',planet:'#27b8a0'},
+ w:76,gaps:[[18,3],[40,3],[58,3]],plats:[[10,11,4],[22,11,3],[26,9,3],[30,11,3],[46,11,3],[50,9,3],[54,11,3],[64,11,4]],spikes:[[33,12,2],[67,12,2]],blobs:[[13,16,12],[35,38,12],[61,65,12]],
+ crys:[...row(4,6,12),...row(10,13,10),[18,11],[20,11],...row(22,24,10),[26,8],[28,8],[40,11],[42,11],...row(46,48,10),[50,8],[52,8],...row(54,56,10),[58,11],[60,11],...row(64,67,10)],
+ checks:[17,39,57],start:[2,12],exit:[73,12],
+ terms:[
+  {pos:[7,12],
+   card:{title:'The process model',html:`<p>In the theory of gamified learning, the path is:</p><p><strong>game element &rarr; learner behavior or attitude &rarr; learning outcome</strong></p><p>Existing instructional content also feeds behaviors, attitudes and outcomes. If that content is ineffective, adding game elements only draws attention to something that already fails.</p>`,src:SRC_L},
+   q:{text:'A leadership course repeats material trainees already know. What is the best next step?',opts:['Re-evaluate training needs and fix the content first','Add badges','Add a leaderboard','Add a story'],ans:0,why:'Gamification cannot replace or repair instructional content. When content misses the need, revisit the needs assessment before adding game elements.'}},
+  {pos:[27,8],
+   card:{title:'Mediation and moderation',html:`<p>Game elements can act on learning in two ways.</p><ul><li><strong>Mediation:</strong> an element changes a behavior, and that behavior produces the learning. Example: points and challenge push trainees to spend more time on practice tests, and time on task improves learning.</li><li><strong>Moderation:</strong> an element changes an attitude, such as engagement, which strengthens the link between existing content and learning.</li></ul>`,src:SRC_L},
+   q:{text:'Points and a team challenge get trainees to spend more time with practice material, and the extra time raises learning. Which pathway is that?',opts:['Mediation, with time on task as the mediator','Moderation by organizational climate','Direct replacement of instruction','No pathway, because points cannot affect learning'],ans:0,why:'The element changes a behavior (time on task) and that behavior drives learning. That is the mediating route in the process model.'}},
+  {pos:[51,8],
+   card:{title:'If it is not broken, do not fix it',html:`<p>Landers and colleagues advise gamifying only to address a specific, diagnosed problem.</p><ul><li>Start from a needs assessment and training evaluation.</li><li>Try simpler, well-supported techniques first, such as practice tests.</li><li>Gamifying training that already works can make some outcomes worse.</li></ul>`,src:SRC_L},
+   q:{text:'Evaluation shows trainees score well and report high motivation. A colleague still wants to add leaderboards. What is the best response?',opts:['Hold off, because no gap has been diagnosed and the change could backfire','Add leaderboards anyway, since they never hurt','Add all nine element categories','Add badges but remove the assessments'],ans:0,why:'Without an identified deficit there is nothing for gamification to fix. Adding elements to effective training can lower some outcomes.'}},
+  {pos:[70,12],
+   card:{title:'Match the gap to the remedy',html:`<ul><li><strong>Weak retention:</strong> use practice and recall. A team review game applies the testing effect.</li><li><strong>Disliked training (poor affective reactions):</strong> engagement-focused elements such as narrative may help.</li><li><strong>Seen as useless (poor utility reactions):</strong> redevelop the content.</li><li><strong>Low motivation to learn:</strong> fiction, challenge, rules and goals, or control.</li></ul>`,src:SRC_L},
+   q:{text:'Post-training knowledge retention is weak. Which fix fits best?',opts:['A team review game with quiz questions and score feedback','Background music','Avatars for every learner','Random surprise drops'],ans:0,why:'Practicing recall improves retention (the testing effect). A review game adds rules, feedback and teamwork to that practice.'}}
+ ],
+ lens:'Adult learners judge training by relevance and respect for their time. A gap analysis keeps you from layering games on training that already works, or on content they find useless.',
+ recap:['Element, then behavior or attitude, then outcome.','Content comes first. Gamification amplifies it.','Diagnose a specific gap before choosing elements.']
+},
+{
+ id:4,name:'Motivation Moon',sub:'Theory behind the elements',
+ brief:'The moon pulls on every learner with different forces. Learn which theories explain the pull, and where rewards can go wrong.',
+ tags:['Self-determination','Goal setting','Reward trap'],
+ theme:{s1:'#2a1407',s2:'#6a3513',acc:'#ffb347',tile:'#5d3c25',planet:'#d98a3a'},
+ w:80,gaps:[[16,3],[34,3],[52,3],[66,2]],plats:[[20,11,3],[24,9,3],[28,11,3],[38,11,3],[42,9,3],[46,7,3],[56,11,3],[60,9,3],[72,11,3]],spikes:[[22,12,2],[62,12,2]],blobs:[[8,13,12],[28,32,12],[40,49,12],[70,75,12]],
+ crys:[...row(3,5,12),[16,11],[18,11],...row(20,22,10),[24,8],[26,8],...row(28,30,10),[34,11],[36,11],...row(38,40,10),[42,8],[44,8],[46,6],[48,6],[52,11],[54,11],...row(56,58,10),...row(60,62,8),[66,11],[67,11],...row(72,74,10)],
+ checks:[14,32,50,64],start:[2,12],exit:[78,12],
+ terms:[
+  {pos:[6,12],
+   card:{title:'Autonomy, competence, relatedness',html:`<p>Self-determination theory names three basic needs. Game elements can serve each.</p><ul><li><strong>Autonomy:</strong> choice over order, path or avatar.</li><li><strong>Competence:</strong> timely feedback and achievable challenge.</li><li><strong>Relatedness:</strong> teamwork, cooperation and shared play.</li></ul>`,src:SRC_L+' and '+SRC_R},
+   q:{text:'Which design best serves the need for relatedness?',opts:['A team challenge where learners help each other score','A solo countdown timer','Hidden scores no one can see','Random rewards'],ans:0,why:'Relatedness is about connection with others. Cooperation and shared goals serve it.'}},
+  {pos:[25,8],
+   card:{title:'Competence needs a challenge',html:`<p>Points and badges give a sense of competence only if learners perceive the task as <strong>challenging</strong>.</p><p>Praise for trivially easy tasks feels hollow. In the Spanish study, some participants called the tasks too easy, and a ceiling effect blurred any differences between versions.</p>`,src:SRC_R},
+   q:{text:'Badges are handed out for completing trivially easy tasks. What is the likely effect on learners\' sense of competence?',opts:['It will not meaningfully strengthen it','It strengthens it fully, whatever the difficulty','It strengthens autonomy instead','It strengthens relatedness instead'],ans:0,why:'Feedback signals competence when the task felt like a real challenge. Easy wins carry little information.'}},
+  {pos:[47,6],
+   card:{title:'Goals and feedback',html:`<p>Goal-setting theory says difficult, specific goals focus effort and persistence, especially with feedback. Leaderboards, progress bars and badges act like goals and feedback.</p><p>In one experiment, people shown leaderboards with easy, moderate, difficult and impossible targets tended to perform at the level of the <strong>difficult</strong> goal.</p>`,src:SRC_L},
+   q:{text:'When shown leaderboards with easy, moderate, difficult and impossible targets, participants tended to perform:',opts:['At the level of a difficult goal','At the level of the easy goal','The same as people with no leaderboard','Worse than a no-goal group'],ans:0,why:'Leaderboards worked much like traditional goal setting, with performance clustering near the difficult goal.'}},
+  {pos:[76,12],
+   card:{title:'The reward trap',html:`<p>If every action earns a reward, learners may chase the reward instead of the learning.</p><ul><li>Learners can mistake external motivation for intrinsic motivation.</li><li>Expected material rewards can lower intrinsic motivation.</li><li>Gamification built into the curriculum can feel like an obligation.</li></ul><p>Safer: tie rewards to meaningful milestones and give informative feedback.</p>`,src:SRC_R},
+   q:{text:'Which approach to rewards is safest for lasting motivation?',opts:['Tie rewards to meaningful progress and give informative feedback','Give points for every click','Offer larger prizes every session','Make participation mandatory so everyone sees the rewards'],ans:0,why:'Meaningful milestones plus informative feedback support competence without training learners to chase points.'}}
+ ],
+ lens:'Self-directed adults need work that feels competent and chosen. Reward-chasing can crowd out the intrinsic motivation that carries them through long, voluntary learning.',
+ recap:['Autonomy, competence and relatedness drive intrinsic motivation.','Hard, specific goals plus feedback focus effort.','Reward everything and learners may chase the reward.']
+},
+{
+ id:5,name:'Adult Learner Station',sub:'Aligning with adult learning',
+ brief:'This station is staffed by experienced crew with their own plans. Every design choice here has to respect who they are.',
+ tags:['Self-direction','Prior knowledge','Buy-in','Relevance'],
+ theme:{s1:'#0a2416',s2:'#1e5c3c',acc:'#8dff7a',tile:'#2a5c40',planet:'#35b56a'},
+ w:84,gaps:[[14,3],[30,3],[46,3],[62,3]],plats:[[8,11,3],[19,11,3],[23,9,3],[35,11,3],[39,9,3],[43,11,3],[50,11,3],[54,9,3],[58,7,3],[66,11,3],[70,9,3]],spikes:[[26,12,2],[41,12,2],[76,12,2]],blobs:[[8,12,12],[20,24,12],[34,38,12],[68,73,12]],
+ crys:[...row(2,4,12),...row(8,10,10),[14,11],[16,11],...row(19,21,10),[23,8],[25,8],[30,11],[32,11],...row(35,37,10),[39,8],[41,8],...row(43,45,10),[46,11],[48,11],...row(50,52,10),...row(54,56,8),[58,6],[60,6],[62,11],[64,11],...row(66,68,10),...row(70,72,8)],
+ checks:[13,29,45,61],start:[2,12],exit:[82,12],
+ terms:[
+  {pos:[5,12],
+   card:{title:'Self-directed learners',html:`<p>Adults increasingly learn on their own, often without a teacher present. Online formats such as MOOCs suffer high dropout, and gamification is one idea for sustaining motivation.</p><p>Autonomy matters. Giving freedom of choice over the order and type of tasks supports it. Riedmann\'s fixed task order is named as a limit on learners\' autonomy.</p>`,src:SRC_R},
+   q:{text:'Which design best supports adult learners\' self-direction?',opts:['Let learners choose the order and type of tasks, with clear goals','A fixed linear path with timers','A mandatory public leaderboard','Random prize drops'],ans:0,why:'Choice over order and type of tasks supports autonomy, which matters most when no instructor is steering.'}},
+  {pos:[24,8],
+   card:{title:'Prior knowledge and ceiling effects',html:`<p>Adults bring experience. Most Spanish-study participants already knew a little Spanish, and scores were high even in the non-gamified version. That ceiling effect hid any difference between conditions.</p><p>The authors suggest adaptive, individually challenging content so people with prior knowledge can still improve.</p>`,src:SRC_R},
+   q:{text:'Experienced adults ace a gamified module, and so do those without the game layer. What is the best reading?',opts:['The content may be too easy for them, so adapt the difficulty','Gamification clearly failed, so remove all elements','Add more badges','Shorten the module'],ans:0,why:'A ceiling effect points to content that does not challenge people with prior knowledge. Calibrating difficulty is the fix.'}},
+  {pos:[59,6],
+   card:{title:'Know your learners and your context',html:`<ul><li><strong>Game experience and attitudes</strong> change how gamification lands. Those with little game experience or negative attitudes can do worse.</li><li><strong>Age</strong> acts as a proxy. Older adults often found gamified instruction harder to use.</li><li><strong>Context:</strong> culture, supervisor support and employee consent or buy-in all matter. Imposed gamification can cancel benefits.</li></ul>`,src:SRC_L},
+   q:{text:'Before rolling out a gamified leaderboard across a workforce, what matters most?',opts:['Assess learners\' game experience and attitudes, and secure buy-in and supervisor support','Choose the flashiest design','Make it mandatory so everyone participates','Skip any evaluation'],ans:0,why:'Gamification can help some learners and harm others. Know the population and the climate, and ask for buy-in.'}},
+  {pos:[80,12],
+   card:{title:'Relevance and meaning',html:`<p>Adults want to see why learning matters. A background story and real-world context can make actions feel meaningful. A narrative should give the learner a relevant role.</p><p>Tie the fiction to the work people actually do.</p>`,src:SRC_R},
+   q:{text:'Which narrative best fits a course for adult managers?',opts:['A role as a team lead solving scenarios drawn from their real work','A story chosen for novelty with no link to their work','No context at all','A pure prize competition'],ans:0,why:'Meaningful context, tied to real work, helps learners see their actions as relevant.'}}
+ ],
+ lens:'This is the core alignment. Adults are self-directed, bring prior knowledge, hold varied attitudes toward games, and expect relevance. Calibrate difficulty, give real choices, ask for buy-in, and tie stories to real work.',
+ recap:['Offer real choices over path and pace.','Calibrate difficulty to prior knowledge.','Seek buy-in and make the story relevant to real work.']
+},
+{
+ id:6,name:'Mission Control',sub:'Final design review',
+ brief:'The last review. Mission Control hands you real scenarios. Diagnose first, then choose. The Beacon lights only when your reasoning holds.',
+ tags:['Scenario reasoning','Design cycle'],
+ theme:{s1:'#1a1230',s2:'#41204a',acc:'#ff7a8a',tile:'#3d3563',planet:'#d1466f'},
+ w:70,gaps:[[16,3],[34,3],[52,3]],plats:[[10,11,3],[22,11,3],[27,9,3],[40,11,3],[44,9,3],[58,11,3],[62,9,3]],spikes:[[24,12,2],[47,12,2]],blobs:[[9,13,12],[29,32,12],[38,45,12],[59,62,12]],
+ crys:[...row(3,5,12),...row(10,12,10),[16,11],[18,11],...row(22,24,10),[27,8],[29,8],[34,11],[36,11],...row(40,42,10),[44,8],[46,8],[52,11],[54,11],...row(58,60,10),...row(62,64,8)],
+ checks:[15,33,51],start:[2,12],exit:[68,12],
+ terms:[
+  {pos:[7,12],
+   card:{title:'Scenario A: forgettable training',html:`<p>A compliance course has high completion and trainees say the content is useful, but retention scores are low.</p><p>Diagnosis: a retention gap, not a content or reaction problem.</p>`,src:SRC_L},
+   q:{text:'What is the best-supported move?',opts:['Add retrieval practice as a team review game, then re-evaluate','Add a public leaderboard of completion times','Rewrite the content from scratch','Add all nine element categories'],ans:0,why:'Retention improves with practice recall (the testing effect). A review game adds goals, feedback and teamwork, and re-evaluation closes the loop.'}},
+  {pos:[28,8],
+   card:{title:'Scenario B: no perceived value',html:`<p>After a course, trainees say the content has no value for their job. Completion and quiz scores are fine.</p><p>Diagnosis: a utility problem. The material does not match their work.</p>`,src:SRC_L},
+   q:{text:'What should the designer do first?',opts:['Redevelop the content to match real job needs','Add badges','Add a leaderboard','Add a space story'],ans:0,why:'When the content itself is seen as low in value, redeveloping it is more impactful than layering game elements on top.'}},
+  {pos:[45,8],
+   card:{title:'Scenario C: a mixed cohort',html:`<p>An experienced adult cohort has mixed attitudes toward games. You plan a gamified pilot.</p>`,src:SRC_L+' and '+SRC_R},
+   q:{text:'Which plan best fits what the research suggests?',opts:['Offer choices and opt-in paths, tie rewards to meaningful milestones, pilot with a small group, measure, then adjust','Mandatory leaderboard for everyone','Maximum elements for a big-bang launch','Launch and skip measurement'],ans:0,why:'Choice, buy-in, meaningful rewards and measurement address autonomy, varied attitudes and the reward trap.'}},
+  {pos:[64,12],
+   card:{title:'The design cycle',html:`<p>Gamification is incremental. Evaluate the current training, find the gap, trace the root cause, choose elements tied to that cause, implement, then evaluate again. Repeat if the gap persists.</p>`,src:SRC_L},
+   q:{text:'Which sequence matches the recommended process?',opts:['Evaluate training, pinpoint the gap and root cause, choose theory-linked elements, implement, re-evaluate and iterate','Choose elements, implement, hope for the best','Add every element, then measure','Add game elements, then diagnose'],ans:0,why:'Diagnosis comes before design, and evaluation closes the loop so the next iteration is informed.'}}
+ ],
+ lens:'Treat gamification as an iterative design cycle: diagnose, choose, pilot, measure, adjust. That respects adult learners\' time and keeps your claims honest.',
+ recap:['Diagnose before you design.','Fix content before adding elements.','Pilot, measure, iterate.']
+}
+];
+LEVELS.forEach(L=>L.terms.forEach((t,k)=>{t.id='L'+L.id+'T'+k}));
+
+/* ---------- ENGINE ---------- */
+const T=32,VW=960,VH=512,GROUND=13;
+const SUITS=[{n:'Solar orange',c:'#ff8a3d'},{n:'Ion blue',c:'#4fb8ff'},{n:'Moss green',c:'#7fe05a'},{n:'Nova pink',c:'#ff6bd0'}];
+const RANKS=['Cadet','Cadet','Navigator','Pilot','Flight Lead','Captain','Commander'];
+const $=s=>document.querySelector(s);
+const canvas=$('#c'),ctx=canvas.getContext('2d');
+ctx.imageSmoothingEnabled=false;
+
+/* persistence (per viewer, optional) */
+const store={
+  get(){try{return JSON.parse(localStorage.getItem('orbit-academy-v1'))}catch(e){return null}},
+  set(v){try{localStorage.setItem('orbit-academy-v1',JSON.stringify(v))}catch(e){}}
+};
+const prog=Object.assign({unlocked:1,res:{},log:[],suit:0,muted:false},store.get()||{});
+const save=()=>store.set(prog);
+
+/* audio */
+let AC=null;
+function ac(){
+  if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}
+  if(AC&&AC.state==='suspended'){try{AC.resume()}catch(e){}}
+  return AC;
+}
+function tone(f,d,type,vol,when,slide){
+  const a=ac(); if(!a||prog.muted)return;
+  const t=a.currentTime+(when||0),o=a.createOscillator(),g=a.createGain();
+  o.type=type||'square';o.frequency.setValueAtTime(f,t);
+  if(slide)o.frequency.exponentialRampToValueAtTime(slide,t+d);
+  g.gain.setValueAtTime(vol||.05,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);
+  o.connect(g);g.connect(a.destination);o.start(t);o.stop(t+d+.02);
+}
+const SFX={
+  jump:()=>tone(300,.14,'square',.035,0,620),
+  gem:()=>{tone(880,.08,'triangle',.06);tone(1320,.1,'triangle',.06,.07)},
+  ok:()=>[523,659,784,1047].forEach((f,i)=>tone(f,.14,'square',.045,i*.09)),
+  no:()=>tone(220,.2,'sawtooth',.05,0,140),
+  hurt:()=>tone(160,.25,'sawtooth',.06,0,60),
+  stomp:()=>tone(400,.1,'square',.05,0,150),
+  check:()=>{tone(660,.1,'triangle',.05);tone(990,.14,'triangle',.05,.1)},
+  open:()=>tone(500,.1,'square',.04,0,800),
+  win:()=>[523,659,784,1047,1319].forEach((f,i)=>tone(f,.2,'square',.05,i*.12))
+};
+const sfx=n=>{try{SFX[n]&&SFX[n]()}catch(e){}};
+
+/* state */
+const S={mode:'screen',modal:null,g:null,last:0,acc:0,toastT:0};
+const K={l:0,r:0,j:0,jEdge:0,act:0};
+const clearKeys=()=>{K.l=K.r=K.j=K.jEdge=K.act=0};
+const maxScore=()=>Object.values(prog.res).reduce((a,r)=>a+(r.best||0),0);
+const levelsDone=()=>LEVELS.filter(L=>prog.res[L.id]).length;
+
+/* ---------- level setup ---------- */
+function startLevel(i){
+  const L=LEVELS[i];
+  const grid=Array.from({length:16},()=>new Uint8Array(L.w));
+  for(let x=0;x<L.w;x++){
+    if(!L.gaps.some(g=>x>=g[0]&&x<g[0]+g[1])){for(let y=GROUND;y<16;y++)grid[y][x]=1}
+  }
+  L.plats.forEach(p=>{for(let k=0;k<p[2];k++)grid[p[1]][p[0]+k]=2});
+  const rnd=(()=>{let s=L.id*9301+49297;return()=>{s=(s*9301+49297)%233280;return s/233280}})();
+  const stars=Array.from({length:110},()=>({x:rnd()*VW,y:rnd()*VH*.85,s:rnd()<.15?2:1,f:.04+rnd()*.22,tw:rnd()*6}));
+  const g={i,L,grid,cols:L.w,stars,t:0,bumps:0,score:0,gems:0,done:0,inv:0,shake:0,parts:[],near:null,tries:{},first:0,
+    cam:{x:0},
+    P:{x:L.start[0]*T+6,y:(L.start[1]+1)*T-28,w:20,h:28,vx:0,vy:0,on:false,face:1,coy:0,buf:0,anim:0},
+    blobs:L.blobs.map(b=>({x1:b[0]*T,x2:(b[1]+1)*T-26,x:b[0]*T,y:(b[2]+1)*T-20,dir:1,alive:true,sq:0})),
+    crys:L.crys.map(c=>({x:c[0]*T+16,y:c[1]*T+16,got:false,ph:rnd()*6})),
+    terms:L.terms.map((t,k)=>({k,def:t,x:t.pos[0]*T+2,y:(t.pos[1]+1)*T-40,w:28,h:40,done:false})),
+    checks:L.checks.map(c=>({x:c*T,on:false})),
+    exit:{x:L.exit[0]*T-8,y:(L.exit[1]+1)*T-64,w:48,h:64}
+  };
+  g.last={x:g.P.x,y:g.P.y};
+  g.cam.x=0;
+  S.g=g;S.mode='play';S.modal=null;S.acc=0;S.last=0;clearKeys();
+  hideScreen();
+  $('#hLevel').textContent='L'+L.id+' '+L.name;
+  hud();
+  toast(L.brief.split('. ')[0]+'.',3600);
+}
+function hud(){
+  const g=S.g;if(!g)return;
+  $('#hScore').textContent=g.score;
+  $('#hGems').textContent=g.gems+'/'+g.crys.length;
+  $('#pips').innerHTML=g.terms.map(t=>'<span class="pip'+(t.done?' on':'')+'"></span>').join('');
+  $('#pips').setAttribute('aria-label',g.done+' of '+g.terms.length+' stations completed');
+}
+function toast(msg,ms){
+  const el=$('#toast');el.textContent=msg;clearTimeout(S.toastT);
+  S.toastT=setTimeout(()=>{el.textContent=''},ms||2200);
+}
+function burst(x,y,col,n){
+  for(let i=0;i<n;i++)S.g.parts.push({x,y,vx:(Math.random()-.5)*4,vy:-Math.random()*3-1,life:30+Math.random()*20,c:col});
+}
+
+/* ---------- physics ---------- */
+function tileAt(g,tx,ty){
+  if(tx<0||tx>=g.cols)return 1;
+  if(ty<0||ty>=16)return 0;
+  return g.grid[ty][tx];
+}
+function respawn(g){
+  const P=g.P;P.x=g.last.x;P.y=g.last.y;P.vx=0;P.vy=0;
+}
+function hurt(g){
+  if(g.inv>0)return;
+  g.bumps++;g.shake=10;g.inv=90;sfx('hurt');
+  respawn(g);
+  toast('Bump. Back to the last checkpoint. Nothing is lost.',1800);
+}
+function stepPlayer(g){
+  const P=g.P,MOVE=3,JUMP=10,GRAV=.5;
+  const ax=(K.r?1:0)-(K.l?1:0);
+  P.vx=ax*MOVE;if(ax)P.face=ax;
+  P.coy=P.on?6:P.coy-1;
+  P.buf=K.jEdge?6:P.buf-1;K.jEdge=0;
+  if(P.buf>0&&P.coy>0){P.vy=-JUMP;P.on=false;P.coy=0;P.buf=0;sfx('jump')}
+  let gr=GRAV;if(P.vy<0&&!K.j)gr=GRAV*2.4;
+  P.vy=Math.min(P.vy+gr,11);
+  /* horizontal */
+  P.x+=P.vx;
+  const r0=Math.floor(P.y/T),r1=Math.floor((P.y+P.h-1)/T);
+  if(P.vx>0){
+    const tx=Math.floor((P.x+P.w)/T);
+    for(let ty=r0;ty<=r1;ty++)if(tileAt(g,tx,ty)===1){P.x=tx*T-P.w;break}
+  }else if(P.vx<0){
+    const tx=Math.floor(P.x/T);
+    for(let ty=r0;ty<=r1;ty++)if(tileAt(g,tx,ty)===1){P.x=(tx+1)*T;break}
+  }
+  /* vertical */
+  const prevBottom=P.y+P.h;
+  P.y+=P.vy;P.on=false;
+  const c0=Math.floor(P.x/T),c1=Math.floor((P.x+P.w-1)/T);
+  if(P.vy>=0){
+    const ty=Math.floor((P.y+P.h)/T);
+    for(let tx=c0;tx<=c1;tx++){
+      const t=tileAt(g,tx,ty);
+      if(t===1||(t===2&&prevBottom<=ty*T+.5)){P.y=ty*T-P.h;P.vy=0;P.on=true;break}
+    }
+  }else{
+    const ty=Math.floor(P.y/T);
+    for(let tx=c0;tx<=c1;tx++)if(tileAt(g,tx,ty)===1){P.y=(ty+1)*T;P.vy=0;break}
+  }
+  if(P.on&&ax)P.anim++;else if(!ax)P.anim=0;
+  if(P.y>VH+60)hurt(g);
+}
+const hit=(a,b)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
+
+function update(){
+  const g=S.g;if(!g)return;
+  g.t++;if(g.inv>0)g.inv--;if(g.shake>0)g.shake--;
+  stepPlayer(g);
+  const P=g.P;
+  /* blobs */
+  for(const b of g.blobs){
+    if(!b.alive){b.sq++;continue}
+    b.x+=b.dir*.8;
+    if(b.x<=b.x1){b.x=b.x1;b.dir=1}
+    if(b.x>=b.x2){b.x=b.x2;b.dir=-1}
+    const br={x:b.x,y:b.y,w:26,h:20};
+    if(hit(P,br)){
+      if(P.vy>0&&(P.y+P.h)-P.vy<=b.y+10){b.alive=false;P.vy=-7;g.score+=25;sfx('stomp');burst(b.x+13,b.y+8,'#ff7a8a',10);hud()}
+      else hurt(g);
+    }
+  }
+  /* spikes */
+  for(const s of g.L.spikes){
+    if(hit(P,{x:s[0]*T+5,y:s[1]*T+16,w:s[2]*T-10,h:16}))hurt(g);
+  }
+  /* crystals */
+  for(const c of g.crys){
+    if(!c.got&&Math.abs(P.x+P.w/2-c.x)<18&&Math.abs(P.y+P.h/2-c.y)<22){c.got=true;g.gems++;g.score+=10;sfx('gem');burst(c.x,c.y,'#7df0ff',6);hud()}
+  }
+  /* checkpoints */
+  for(const k of g.checks){
+    if(!k.on&&P.x>k.x&&P.on){
+      k.on=true;g.last={x:k.x+6,y:GROUND*T-28-1};sfx('check');toast('Checkpoint saved.',1400);
+    }
+  }
+  /* near things */
+  g.near=null;
+  const pc={x:P.x+P.w/2,y:P.y+P.h/2};
+  for(const t of g.terms){
+    if(Math.abs(pc.x-(t.x+14))<38&&Math.abs(pc.y-(t.y+20))<44){g.near={type:'term',t};break}
+  }
+  const allDone=g.done===g.terms.length;
+  if(hit(P,g.exit)){
+    if(allDone)completeLevel(g);
+    else if(g.t%90===0)toast('Airlock locked. '+g.done+' of '+g.terms.length+' stations done.',1800);
+  }
+  if(K.act){K.act=0;if(g.near&&g.near.type==='term')openTerm(g,g.near.t)}
+  /* particles + camera */
+  for(const p of g.parts){p.x+=p.vx;p.y+=p.vy;p.vy+=.15;p.life--}
+  g.parts=g.parts.filter(p=>p.life>0);
+  const target=Math.max(0,Math.min(g.cols*T-VW,P.x+P.w/2-VW/2));
+  g.cam.x+=(target-g.cam.x)*.15;
+  /* pause shake handled in draw */
+}
+
+/* ---------- drawing ---------- */
+const R=(x,y,w,h,c)=>{ctx.fillStyle=c;ctx.fillRect(Math.round(x),Math.round(y),w,h)};
+function draw(){
+  const g=S.g;if(!g)return;
+  const th=g.L.theme,cx=Math.round(g.cam.x);
+  ctx.save();
+  if(g.shake>0)ctx.translate((Math.random()-.5)*6,(Math.random()-.5)*6);
+  const gr=ctx.createLinearGradient(0,0,0,VH);gr.addColorStop(0,th.s1);gr.addColorStop(1,th.s2);
+  ctx.fillStyle=gr;ctx.fillRect(-10,-10,VW+20,VH+20);
+  /* stars */
+  for(const s of g.stars){
+    const sx=(((s.x-g.cam.x*s.f)%VW)+VW)%VW;
+    ctx.globalAlpha=.55+.45*Math.sin(g.t/40+s.tw);ctx.fillStyle='#fff';ctx.fillRect(sx,s.y,s.s,s.s);
+  }
+  ctx.globalAlpha=1;
+  /* planet + ring */
+  const px=700-g.cam.x*.12,py=140;
+  ctx.fillStyle=th.planet;ctx.beginPath();ctx.arc(px,py,86,0,7);ctx.fill();
+  ctx.fillStyle='rgba(0,0,0,.28)';ctx.beginPath();ctx.arc(px+22,py+8,76,0,7);ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,.35)';ctx.lineWidth=6;ctx.beginPath();ctx.ellipse(px,py,138,26,-.25,0,7);ctx.stroke();
+  /* distant station silhouettes */
+  ctx.fillStyle='rgba(0,0,0,.22)';
+  for(let i=0;i<8;i++){
+    const bx=(((i*190-g.cam.x*.35)%1700)+1700)%1700-120;
+    ctx.fillRect(bx,380-((i*37)%5)*18,60+(i%3)*18,200);
+  }
+  /* tiles */
+  const x0=Math.floor(cx/T),x1=x0+Math.ceil(VW/T)+1;
+  for(let tx=x0;tx<=x1;tx++){
+    if(tx<0||tx>=g.cols)continue;
+    for(let ty=0;ty<16;ty++){
+      const v=g.grid[ty][tx];if(!v)continue;
+      const px2=tx*T-cx,py2=ty*T;
+      if(v===1){
+        R(px2,py2,T,T,th.tile);
+        R(px2,py2,T,2,'rgba(255,255,255,.08)');
+        if(ty===GROUND){R(px2,py2,T,5,th.acc);R(px2,py2+5,T,3,'rgba(0,0,0,.25)')}
+        R(px2+T-2,py2,2,T,'rgba(0,0,0,.25)');R(px2,py2+T-2,T,2,'rgba(0,0,0,.25)');
+        if(ty>GROUND&&((tx+ty)%3===0)){R(px2+12,py2+12,8,8,'rgba(0,0,0,.18)')}
+      }else{
+        R(px2,py2,T,10,'#3c4b8a');R(px2,py2,T,3,th.acc);R(px2,py2+10,T,2,'rgba(0,0,0,.35)');
+        R(px2+4,py2+5,3,3,'#9fb0ff');R(px2+T-7,py2+5,3,3,'#9fb0ff');
+      }
+    }
+  }
+  /* spikes */
+  ctx.fillStyle='#d6dcff';
+  for(const s of g.L.spikes){
+    for(let k=0;k<s[2]*2;k++){
+      const bx=s[0]*T+k*16-cx,by=(s[1]+1)*T;
+      ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx+8,by-26);ctx.lineTo(bx+16,by);ctx.fill();
+    }
+    R(s[0]*T-cx,(s[1]+1)*T-3,s[2]*T,3,'#ff7a8a');
+  }
+  /* checkpoints */
+  for(const k of g.checks){
+    const bx=k.x+14-cx;
+    R(bx,GROUND*T-44,3,44,'#cdd5ff');
+    ctx.fillStyle=k.on?'#62e8a8':'#6f7bb0';
+    ctx.beginPath();ctx.moveTo(bx+3,GROUND*T-44);ctx.lineTo(bx+22,GROUND*T-36);ctx.lineTo(bx+3,GROUND*T-28);ctx.fill();
+  }
+  /* exit airlock */
+  const e=g.exit,open=g.done===g.terms.length,ex=e.x-cx;
+  R(ex-4,e.y-4,e.w+8,e.h+4,'#4a5aa6');
+  R(ex,e.y,e.w,e.h,open?'#103a52':'#2a1420');
+  if(open){
+    for(let k=0;k<3;k++){const o=((g.t/6+k*8)%24);R(ex+10,e.y+54-o*2,28,3,'rgba(95,214,255,'+(1-o/24)+')')}
+  }
+  R(ex+4,e.y+4,8,8,open?'#62e8a8':'#ff7a8a');
+  ctx.fillStyle='#e9eeff';ctx.font='bold 10px monospace';ctx.textAlign='center';ctx.fillText('AIRLOCK',ex+e.w/2,e.y-9);
+  /* terminals */
+  for(const t of g.terms){
+    const tx=t.x-cx;
+    R(tx,t.y,t.w,t.h,'#2b3a7a');R(tx+2,t.y+2,t.w-4,t.h-14,'#0b1130');
+    if(t.done){R(tx+4,t.y+4,t.w-8,t.h-18,'#1b6a4c');ctx.fillStyle='#bfffe0';ctx.font='bold 16px monospace';ctx.fillText('✓',tx+t.w/2,t.y+22)}
+    else{
+      const pulse=.5+.5*Math.sin(g.t/14);
+      R(tx+4,t.y+4,t.w-8,t.h-18,'rgba(95,214,255,'+(.25+.3*pulse)+')');
+      ctx.fillStyle='#e9fbff';ctx.font='bold 16px monospace';ctx.fillText('?',tx+t.w/2,t.y+22);
+    }
+    R(tx+6,t.y+t.h-9,t.w-12,3,th.acc);R(tx+4,t.y+t.h-4,t.w-8,4,'#1a2350');
+    ctx.fillStyle='#9fb0ff';ctx.font='bold 9px monospace';ctx.fillText(String(t.k+1),tx+t.w/2,t.y-4);
+  }
+  /* crystals */
+  for(const c of g.crys){
+    if(c.got)continue;
+    const bx=c.x-cx,by=c.y+Math.sin(g.t/16+c.ph)*3;
+    ctx.fillStyle='#7df0ff';ctx.beginPath();ctx.moveTo(bx,by-9);ctx.lineTo(bx+7,by);ctx.lineTo(bx,by+9);ctx.lineTo(bx-7,by);ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,.7)';ctx.beginPath();ctx.moveTo(bx,by-9);ctx.lineTo(bx+3,by-2);ctx.lineTo(bx-3,by-2);ctx.fill();
+  }
+  /* blobs */
+  for(const b of g.blobs){
+    if(!b.alive&&b.sq>20)continue;
+    const bx=Math.round(b.x-cx),sq=b.alive?0:Math.min(14,b.sq),by=Math.round(b.y)+sq,h=20-sq;
+    ctx.globalAlpha=b.alive?1:1-b.sq/22;
+    R(bx+3,by,20,2,'#ff6b86');R(bx,by+2,26,Math.max(2,h-4),'#ff6b86');R(bx+3,by+h-2,20,2,'#d1405f');
+    if(b.alive){
+      R(bx+5,by+5,6,6,'#fff');R(bx+15,by+5,6,6,'#fff');
+      R(bx+(b.dir>0?8:6),by+7,3,3,'#1a0d20');R(bx+(b.dir>0?18:16),by+7,3,3,'#1a0d20');
+      R(bx+8,by+14,10,2,'#7a2038');
+    }
+    ctx.globalAlpha=1;
+  }
+  drawPlayer(g,cx);
+  /* particles */
+  for(const p of g.parts){ctx.globalAlpha=Math.max(0,p.life/40);R(p.x-cx,p.y,3,3,p.c)}
+  ctx.globalAlpha=1;
+  /* prompt */
+  if(g.near){
+    const t=g.near.t,bx=t.x+14-cx;
+    ctx.fillStyle='#e9eeff';ctx.fillRect(bx-34,t.y-36,68,20);
+    ctx.fillStyle='#10163a';ctx.font='bold 12px monospace';ctx.textAlign='center';
+    ctx.fillText(t.done?'E: review':'E: open',bx,t.y-22);
+  }
+  ctx.restore();
+}
+function drawPlayer(g,cx){
+  const P=g.P;
+  if(g.inv>0&&((g.t>>2)&1))return;
+  const suit=SUITS[prog.suit].c,moving=P.on&&(K.l||K.r),step=moving?((P.anim>>3)&1):0;
+  ctx.save();ctx.translate(Math.round(P.x-cx+10),Math.round(P.y));ctx.scale(P.face,1);
+  R(-12,15,4,9,'#4a5586');
+  R(-1,-4,2,5,'#f1f4ff');R(-2,-6,4,3,'#ffb347');
+  R(-7,0,14,2,'#f1f4ff');R(-9,2,18,10,'#f1f4ff');R(-7,12,14,2,'#f1f4ff');
+  R(-1,3,9,7,'#10163a');R(1,4,3,2,'#5fd6ff');
+  R(-8,14,16,9,suit);R(-8,19,16,2,'#10163a');
+  const air=!P.on;
+  R(-6,23,5,air?3:(step?3:5),'#26305e');R(1,23,5,air?3:(step?5:3),'#26305e');
+  R(-7,air?26:(step?26:28),7,2,'#e9eeff');R(0,air?26:(step?28:26),7,2,'#e9eeff');
+  R(air?5:(step?6:4),15,4,7,suit);
+  ctx.restore();
+}
+
+/* ---------- screens ---------- */
+const screen=$('#screen');
+function showScreen(html){
+  S.mode='screen';clearKeys();
+  screen.innerHTML='<div class="wrap">'+html+'</div>';
+  screen.hidden=false;screen.scrollTop=0;
+  const f=screen.querySelector('.primary')||screen.querySelector('button');
+  if(f)f.focus({preventScroll:true});
+}
+function hideScreen(){screen.hidden=true;screen.innerHTML=''}
+const bind=(id,fn)=>{const el=screen.querySelector('#'+id);if(el)el.addEventListener('click',fn)};
+
+function suitPicker(){
+  return '<div class="row" role="group" aria-label="Choose your suit color"><span class="srcnote">Suit</span><div class="suits">'+
+    SUITS.map((s,i)=>'<button type="button" class="suit" data-s="'+i+'" style="--c:'+s.c+'" aria-pressed="'+(prog.suit===i)+'" aria-label="'+s.n+'"></button>').join('')+'</div></div>';
+}
+function titleScreen(){
+  const started=Object.keys(prog.res).length>0;
+  showScreen(
+    '<p class="kicker px">Orbit Academy</p>'+
+    '<h1>Light the Learning Beacon</h1>'+
+    '<p class="lead">You are a cadet on a dark research station. Fly through six sectors, open knowledge terminals, answer what you learn, and cycle through each airlock. The ideas come from two research articles on gamification and adult learning.</p>'+
+    suitPicker()+
+    '<div class="row"><button class="btn primary" id="go" type="button">'+(started?'Continue mission':'Start mission')+'</button>'+
+    '<button class="btn" id="notes" type="button">Design notes</button>'+
+    '<button class="btn" id="log" type="button">Mission log</button></div>'+
+    '<p class="srcnote">No game over here. A bump sends you back to the last checkpoint and costs nothing but time. Content: '+SRC_L+' (chapter); '+SRC_R+'.</p>'
+  );
+  screen.querySelectorAll('.suit').forEach(b=>b.addEventListener('click',()=>{prog.suit=+b.dataset.s;save();screen.querySelectorAll('.suit').forEach(x=>x.setAttribute('aria-pressed',String(x===b)))}));
+  bind('go',()=>{ac();started?mapScreen():startLevel(0)});
+  bind('notes',notesScreen);
+  bind('log',()=>openLog());
+}
+function badgeHtml(r){
+  const b=(r&&r.badges)||{};
+  return '<span class="bdg'+(b.ft?'':' off')+'">First-try scholar</span><span class="bdg'+(b.gm?'':' off')+'">Crystal collector</span><span class="bdg'+(b.sm?'':' off')+'">Smooth flyer</span>';
+}
+function mapScreen(){
+  const done=levelsDone();
+  const cards=LEVELS.map((L,i)=>{
+    const open=i<prog.unlocked,r=prog.res[L.id];
+    return '<div class="lv'+(open?'':' locked')+'"><span class="n">SECTOR '+L.id+'</span><h3>'+L.name+'</h3><p>'+L.sub+'</p>'+
+      '<div class="tags">'+L.tags.map(t=>'<span class="tag">'+t+'</span>').join('')+'</div>'+
+      '<div class="badges">'+(open?badgeHtml(r):'')+'</div>'+
+      '<div class="row"><button class="btn'+(open&&!r?' primary':'')+'" type="button" data-lv="'+i+'"'+(open?'':' disabled')+'>'+(open?(r?'Replay':'Launch'):'Locked')+'</button>'+
+      (r?'<span class="stat">Best <b>'+r.best+'</b></span>':'')+'</div></div>';
+  }).join('');
+  showScreen(
+    '<p class="kicker px">Star map</p>'+
+    '<h1>Rank: '+RANKS[done]+'</h1>'+
+    '<div class="stats"><div><div class="v">'+done+'/'+LEVELS.length+'</div><div class="k">Sectors cleared</div></div><div><div class="v">'+maxScore()+'</div><div class="k">Total best score</div></div><div><div class="v">'+prog.log.length+'</div><div class="k">Concepts in log</div></div></div>'+
+    '<div class="grid">'+cards+'</div>'+
+    '<div class="row"><button class="btn" id="log" type="button">Mission log</button><button class="btn" id="notes" type="button">Design notes</button><button class="btn" id="home" type="button">Title</button><button class="btn small" id="reset" type="button">Erase progress</button></div>'
+  );
+  screen.querySelectorAll('[data-lv]').forEach(b=>b.addEventListener('click',()=>{ac();startLevel(+b.dataset.lv)}));
+  bind('log',()=>openLog());bind('notes',notesScreen);bind('home',titleScreen);
+  const rs=screen.querySelector('#reset');let armed=0;
+  rs.addEventListener('click',()=>{
+    if(!armed){armed=1;rs.textContent='Click again to erase';setTimeout(()=>{armed=0;rs.textContent='Erase progress'},3000)}
+    else{prog.unlocked=1;prog.res={};prog.log=[];save();mapScreen()}
+  });
+}
+function notesScreen(){
+  const rows=[
+    ['Rules / goals','Station pips, locked airlock, checkpoints','Clear goals and visible progress toward them'],
+    ['Assessment','Points, three badges, mission log, quiz feedback','Progress tracking and retrieval practice (testing effect)'],
+    ['Game fiction','Orbit Academy and the dark Learning Beacon','Meaning and context for the tasks'],
+    ['Control','Suit color, replay any cleared sector, optional crystals, review any transmission','Autonomy'],
+    ['Conflict / challenge','Pits, spikes, patrolling misconceptions, scenario questions in sector 6','Competence needs real challenge'],
+    ['Environment','Space station sectors with distinct looks','Sense of place and progression'],
+    ['Action language','Keyboard or touch controls; "Use" opens a terminal','How learner and game communicate'],
+    ['Human interaction','Not built in. Pair with a class discussion or team replay','Relatedness']
+  ];
+  showScreen(
+    '<p class="kicker px">For instructors</p><h1>Design notes</h1>'+
+    '<div class="panel"><h3>How this game uses the research</h3><p>Each feature maps to an element category from Landers and colleagues, and to the motivational need it is meant to serve.</p>'+
+    '<div class="tbl"><table><thead><tr><th>Element</th><th>In this game</th><th>Purpose</th></tr></thead><tbody>'+rows.map(r=>'<tr><td>'+r[0]+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td></tr>').join('')+'</tbody></table></div></div>'+
+    '<div class="panel"><h3>A caveat the articles would raise</h3><p>By the Landers definition this is a <strong>serious game</strong>, because the game itself delivers the content. Gamification would add some of these elements to an existing course. Riedmann and colleagues also found no significant learning gain from game elements in an adult sample, so treat this as a way to practice the vocabulary, and evaluate it against your own learners before assuming it works.</p>'+
+    '<p>Rewards here are tied to answering and finishing sectors, with no game over, to avoid the reward trap and the frustration loop.</p></div>'+
+    '<div class="row"><button class="btn primary" id="back" type="button">Back</button></div>'
+  );
+  bind('back',()=>Object.keys(prog.res).length?mapScreen():titleScreen());
+}
+function pauseScreen(){
+  showScreen(
+    '<p class="kicker px">Paused</p><h1>'+S.g.L.name+'</h1>'+
+    '<div class="row"><button class="btn primary" id="res" type="button">Resume</button><button class="btn" id="rst" type="button">Restart sector</button><button class="btn" id="map" type="button">Star map</button><button class="btn" id="log" type="button">Mission log</button></div>'
+  );
+  bind('res',resume);bind('rst',()=>startLevel(S.g.i));bind('map',mapScreen);bind('log',()=>openLog(true));
+}
+function resume(){hideScreen();S.mode='play';S.acc=0;S.last=0;clearKeys()}
+
+/* ---------- modal ---------- */
+const modal=$('#modal');
+function openModal(html,onKey){
+  S.modal={key:onKey||null};
+  modal.innerHTML='<div class="mbox" role="dialog" aria-modal="true">'+html+'</div>';
+  modal.hidden=false;clearKeys();
+  const f=modal.querySelector('.primary')||modal.querySelector('button');if(f)f.focus({preventScroll:true});
+}
+function closeModal(){
+  S.modal=null;modal.hidden=true;modal.innerHTML='';clearKeys();
+  if(screen.hidden===false)return;
+  S.acc=0;S.last=0;
+}
+modal.addEventListener('click',e=>{if(e.target===modal)closeModal()});
+
+function cardHtml(tm,label){
+  const c=tm.card;
+  return '<div class="mhead"><span class="px">'+label+'</span><span class="px dim">Transmission</span></div><h2>'+c.title+'</h2><div class="cardtxt">'+c.html+'</div><p class="src">Source: '+c.src+'</p>';
+}
+function openTerm(g,tm){
+  const def=tm.def,N=g.terms.length,label='Station '+(tm.k+1)+' of '+N;
+  if(tm.done){
+    openModal(cardHtml(def,label)+'<div class="mfoot"><button class="btn primary" id="x" type="button">Close</button></div>');
+    modal.querySelector('#x').addEventListener('click',closeModal);return;
+  }
+  sfx('open');
+  const showCard=()=>{
+    openModal(cardHtml(def,label)+'<div class="mfoot"><button class="btn" id="x" type="button">Close</button><button class="btn primary" id="n" type="button">Answer the question</button></div>');
+    modal.querySelector('#x').addEventListener('click',closeModal);
+    modal.querySelector('#n').addEventListener('click',showQ);
+  };
+  let tries=0,solved=false;
+  const wrong=new Set();
+  const order=def.q.opts.map((_,i)=>i);
+  for(let k=order.length-1;k>0;k--){const j=Math.floor(Math.random()*(k+1));const tmp=order[k];order[k]=order[j];order[j]=tmp}
+  const showQ=()=>{
+    const q=def.q;
+    openModal(
+      '<div class="mhead"><span class="px">'+label+'</span><span class="px dim">Question</span></div>'+
+      '<p class="q">'+q.text+'</p>'+
+      '<div class="opts">'+order.map((oi,pos)=>'<button type="button" class="opt'+(wrong.has(oi)?' wrong':'')+'" data-i="'+oi+'"'+(wrong.has(oi)?' disabled':'')+'><span class="num">'+(pos+1)+'</span><span>'+q.opts[oi]+'</span></button>').join('')+'</div>'+
+      '<div id="fb" aria-live="polite"></div>'+
+      '<div class="mfoot"><button class="btn" id="rev" type="button">Review transmission</button></div>',
+      e=>{const n=parseInt(e.key,10);if(n>=1&&n<=q.opts.length&&!solved){const b=modal.querySelectorAll('.opt')[n-1];if(b&&!b.disabled)b.click()}}
+    );
+    modal.querySelector('#rev').addEventListener('click',showCard);
+    modal.querySelectorAll('.opt').forEach(b=>b.addEventListener('click',()=>pick(+b.dataset.i,b)));
+    if(wrong.size)modal.querySelector('#fb').innerHTML='<div class="fb bad"><b class="b">Not quite.</b> Review the transmission, then try another answer.</div>';
+  };
+  const pick=(i,btn)=>{
+    if(solved)return;
+    const q=def.q,fb=modal.querySelector('#fb');
+    if(i===q.ans){
+      solved=true;
+      const pts=tries===0?100:(tries===1?60:30);
+      g.score+=pts;if(tries===0)g.first++;
+      tm.done=true;g.done++;
+      if(prog.log.indexOf(def.id)<0){prog.log.push(def.id);save()}
+      btn.classList.add('right');
+      modal.querySelectorAll('.opt').forEach(b=>b.disabled=true);
+      fb.innerHTML='<div class="fb good"><b class="g">Correct. +'+pts+' points.</b> '+q.why+'</div>';
+      const foot=modal.querySelector('.mfoot');
+      foot.insertAdjacentHTML('beforeend','<button class="btn primary" id="ok" type="button">Collect insight</button>');
+      const ok=modal.querySelector('#ok');ok.addEventListener('click',()=>{
+        closeModal();hud();
+        toast(g.done===g.terms.length?'Airlock unlocked. Head for the exit.':'Insight stored in your mission log.',2400);
+      });
+      ok.focus();
+      modal.querySelector('.mbox').scrollTop=9999;
+      sfx('ok');burst(tm.x+14,tm.y,'#62e8a8',16);hud();
+    }else{
+      tries++;wrong.add(i);btn.classList.add('wrong');btn.disabled=true;
+      fb.innerHTML='<div class="fb bad"><b class="b">Not quite.</b> Review the transmission, then try another answer.</div>';
+      sfx('no');
+    }
+  };
+  showCard();
+}
+function openLog(fromPause){
+  const wasPlay=S.mode==='play';
+  const items=[];
+  LEVELS.forEach(L=>L.terms.forEach((t,k)=>{if(prog.log.indexOf(t.id)>=0)items.push({L,t,k})}));
+  const list=items.length?items.map((o,idx)=>'<button type="button" class="logitem" data-i="'+idx+'"><b>'+o.t.card.title+'</b><small>Sector '+o.L.id+', '+o.L.name+'</small></button>').join(''):'<p>Nothing here yet. Answer a station question to store its transmission.</p>';
+  openModal('<div class="mhead"><span class="px">Mission log</span><span class="px dim">'+items.length+' of '+LEVELS.reduce((a,L)=>a+L.terms.length,0)+'</span></div><div class="opts">'+list+'</div><div class="mfoot"><button class="btn primary" id="x" type="button">Close</button></div>');
+  modal.querySelector('#x').addEventListener('click',closeModal);
+  modal.querySelectorAll('.logitem').forEach(b=>b.addEventListener('click',()=>{
+    const o=items[+b.dataset.i];
+    openModal(cardHtml(o.t,'Sector '+o.L.id)+'<div class="mfoot"><button class="btn primary" id="back" type="button">Back to log</button></div>');
+    modal.querySelector('#back').addEventListener('click',()=>openLog(fromPause));
+  }));
+  if(wasPlay)S.mode='play';
+}
+
+/* ---------- level complete ---------- */
+function completeLevel(g){
+  S.mode='screen';clearKeys();sfx('win');
+  const L=g.L,N=g.terms.length,gemsAll=g.gems===g.crys.length;
+  const prev=prog.res[L.id]||{best:0,badges:{}};
+  const badges={ft:prev.badges.ft||g.first===N,gm:prev.badges.gm||gemsAll,sm:prev.badges.sm||g.bumps===0};
+  prog.res[L.id]={best:Math.max(prev.best||0,g.score),badges};
+  prog.unlocked=Math.max(prog.unlocked,g.i+2);
+  save();
+  const last=g.i===LEVELS.length-1;
+  const earned=[g.first===N?'First-try scholar':'',gemsAll?'Crystal collector':'',g.bumps===0?'Smooth flyer':''].filter(Boolean);
+  let html='<p class="kicker px">Sector '+L.id+' cleared</p><h1>'+(last?'The Learning Beacon is lit':L.name+' complete')+'</h1>'+
+    '<div class="stats"><div><div class="v">'+g.score+'</div><div class="k">Score</div></div><div><div class="v">'+g.first+'/'+N+'</div><div class="k">Right first try</div></div><div><div class="v">'+g.gems+'/'+g.crys.length+'</div><div class="k">Crystals</div></div><div><div class="v">'+g.bumps+'</div><div class="k">Bumps</div></div></div>'+
+    '<div class="badges">'+(earned.length?earned.map(b=>'<span class="bdg">'+b+'</span>').join(''):'<span class="srcnote">No badges this run. Replay any time for them.</span>')+'</div>'+
+    '<div class="panel"><h3>Concept recap</h3><ul class="clean">'+L.recap.map(r=>'<li>'+r+'</li>').join('')+'</ul></div>'+
+    '<div class="panel"><h3>Adult learning lens</h3><p>'+L.lens+'</p><p class="srcnote">Reflect: where could this idea change a course or training you run?</p></div>';
+  if(last){
+    html+='<div class="panel"><h3>Take it back to your own course</h3><ul class="clean"><li>Diagnose a specific gap before adding anything.</li><li>Fix weak content first. Game elements amplify content, they do not replace it.</li><li>Choose elements tied to the behavior or attitude you want to change.</li><li>Protect autonomy, challenge and relevance for adult learners.</li><li>Pilot, measure, and iterate.</li></ul></div>'+
+      '<p class="lead">Final rank: <strong>Commander</strong>. Total best score: '+(maxScore())+'.</p>';
+  }
+  html+='<div class="row">'+(last?'':'<button class="btn primary" id="next" type="button">Next sector</button>')+
+    '<button class="btn'+(last?' primary':'')+'" id="map" type="button">Star map</button><button class="btn" id="again" type="button">Replay sector</button></div>';
+  showScreen(html);
+  bind('next',()=>startLevel(g.i+1));bind('map',mapScreen);bind('again',()=>startLevel(g.i));
+}
+
+/* ---------- input ---------- */
+addEventListener('keydown',e=>{
+  if(S.modal){
+    if(e.key==='Escape'){closeModal();e.preventDefault();return}
+    if(S.modal.key)S.modal.key(e);
+    return;
+  }
+  if(S.mode!=='play')return;
+  const k=e.key;let used=true;
+  if(k==='ArrowLeft'||k==='a'||k==='A')K.l=1;
+  else if(k==='ArrowRight'||k==='d'||k==='D')K.r=1;
+  else if(k==='ArrowUp'||k==='w'||k==='W'||k===' '){K.j=1;if(!e.repeat)K.jEdge=1}
+  else if(k==='e'||k==='E'||k==='Enter'||k==='ArrowDown'||k==='s'||k==='S'){if(!e.repeat)K.act=1}
+  else if(k==='r'||k==='R'){respawn(S.g)}
+  else if(k==='m'||k==='M'){toggleSound()}
+  else if(k==='l'||k==='L'){openLog()}
+  else if(k==='Escape'||k==='p'||k==='P'){pauseScreen()}
+  else used=false;
+  if(used)e.preventDefault();
+});
+addEventListener('keyup',e=>{
+  const k=e.key;
+  if(k==='ArrowLeft'||k==='a'||k==='A')K.l=0;
+  else if(k==='ArrowRight'||k==='d'||k==='D')K.r=0;
+  else if(k==='ArrowUp'||k==='w'||k==='W'||k===' ')K.j=0;
+});
+addEventListener('blur',clearKeys);
+function holdBtn(id,on,off){
+  const el=$('#'+id);
+  el.addEventListener('pointerdown',e=>{e.preventDefault();ac();on()});
+  ['pointerup','pointerleave','pointercancel'].forEach(t=>el.addEventListener(t,off));
+}
+holdBtn('tL',()=>{K.l=1},()=>{K.l=0});
+holdBtn('tR',()=>{K.r=1},()=>{K.r=0});
+holdBtn('tJ',()=>{K.j=1;K.jEdge=1},()=>{K.j=0});
+holdBtn('tA',()=>{K.act=1},()=>{});
+function toggleSound(){
+  prog.muted=!prog.muted;save();
+  const b=$('#bSnd');b.textContent=prog.muted?'Sound off':'Sound on';b.setAttribute('aria-pressed',String(prog.muted));
+}
+$('#bSnd').addEventListener('click',e=>{ac();toggleSound();e.currentTarget.blur()});
+$('#bLog').addEventListener('click',e=>{e.currentTarget.blur();if(!S.modal&&S.mode==='play')openLog()});
+$('#bMenu').addEventListener('click',e=>{e.currentTarget.blur();if(!S.modal&&S.mode==='play')pauseScreen()});
+$('#bSnd').textContent=prog.muted?'Sound off':'Sound on';
+$('#bSnd').setAttribute('aria-pressed',String(prog.muted));
+
+/* ---------- loop ---------- */
+function frame(ts){
+  requestAnimationFrame(frame);
+  if(S.mode!=='play'||S.modal)return;
+  const dt=Math.min(100,ts-(S.last||ts));S.last=ts;S.acc+=dt;
+  while(S.acc>=1000/60){update();S.acc-=1000/60;if(S.mode!=='play'||S.modal)break}
+  draw();
+}
+titleScreen();
+/* paint a first frame so the stage is never empty behind menus */
+(function firstPaint(){
+  const L=LEVELS[0];
+  ctx.fillStyle=L.theme.s1;ctx.fillRect(0,0,VW,VH);
+})();
+requestAnimationFrame(frame);
+})();
+</script>
